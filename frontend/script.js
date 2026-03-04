@@ -122,12 +122,18 @@ function addMessage(content, type, sources = null, isWelcome = false) {
     let html = `<div class="message-content">${displayContent}</div>`;
     
     if (sources && sources.length > 0) {
-        html += `
-            <details class="sources-collapsible">
-                <summary class="sources-header">Sources</summary>
-                <div class="sources-content">${sources.join(', ')}</div>
-            </details>
-        `;
+        const sourceTags = sources.map(s => {
+            const label = s.label || String(s);
+            if (s.url) {
+                return '<a class="source-tag" href="' + s.url + '" target="_blank" rel="noopener noreferrer">'
+                    + '<i class="fa-solid fa-play fa-xs"></i> ' + label + '</a>';
+            }
+            return '<span class="source-tag">' + label + '</span>';
+        }).join('');
+        html += '<details class="sources-collapsible">'
+            + '<summary class="sources-header"><i class="fa-solid fa-book-open fa-xs"></i> Sources</summary>'
+            + '<div class="sources-content">' + sourceTags + '</div>'
+            + '</details>';
     }
     
     messageDiv.innerHTML = html;

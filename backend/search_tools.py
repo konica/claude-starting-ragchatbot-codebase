@@ -22,7 +22,7 @@ class CourseSearchTool(Tool):
     
     def __init__(self, vector_store: VectorStore):
         self.store = vector_store
-        self.last_sources = []  # Track sources from last search
+        self.last_sources: list = []  # Track sources from last search
     
     def get_tool_definition(self) -> Dict[str, Any]:
         """Return Anthropic tool definition for this tool"""
@@ -88,29 +88,42 @@ class CourseSearchTool(Tool):
     def _format_results(self, results: SearchResults) -> str:
         """Format search results with course and lesson context"""
         formatted = []
-        sources = []  # Track sources for the UI
-        
+        sources = []
+        seen = set()  # deduplicate by (course_title, lesson_num)
+
         for doc, meta in zip(results.documents, results.metadata):
             course_title = meta.get('course_title', 'unknown')
             lesson_num = meta.get('lesson_number')
-            
-            # Build context header
+
+            # Build context header (all chunks passed to Claude)
             header = f"[{course_title}"
             if lesson_num is not None:
                 header += f" - Lesson {lesson_num}"
             header += "]"
-            
-            # Track source for the UI
-            source = course_title
-            if lesson_num is not None:
-                source += f" - Lesson {lesson_num}"
-            sources.append(source)
-            
             formatted.append(f"{header}\n{doc}")
-        
-        # Store sources for retrieval
+
+            # Deduplicate sources for the UI
+            key = (course_title, lesson_num)
+            if key in seen:
+                continue
+            seen.add(key)
+
+            label = course_title
+            if lesson_num is not None:
+                label += f" - Lesson {lesson_num}"
+            url = (
+                self.store.get_lesson_link(course_title, lesson_num)
+                if lesson_num is not None
+                else self.store.get_course_link(course_title)
+            )
+            sources.append({"label": label, "url": url, "_sort_key": (course_title, lesson_num or 0)})
+
+        # Sort ascending by course title then lesson number
+        sources.sort(key=lambda s: s["_sort_key"])
+        for s in sources:
+            del s["_sort_key"]
+
         self.last_sources = sources
-        
         return "\n\n".join(formatted)
 
 class ToolManager:

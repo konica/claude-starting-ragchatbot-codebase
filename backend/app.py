@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional
 import os
 
@@ -40,10 +40,32 @@ class QueryRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
 
+    @field_validator("query")
+    @classmethod
+    def query_must_not_be_blank(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("query must not be empty or whitespace")
+        if len(v) > 2000:
+            raise ValueError("query must not exceed 2000 characters")
+        return v
+
+    @field_validator("session_id")
+    @classmethod
+    def session_id_strip(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            v = v.strip() or None
+        return v
+
+class Source(BaseModel):
+    """A source citation with an optional link"""
+    label: str
+    url: Optional[str] = None
+
 class QueryResponse(BaseModel):
     """Response model for course queries"""
     answer: str
-    sources: List[str]
+    sources: List[Source]
     session_id: str
 
 class CourseStats(BaseModel):
