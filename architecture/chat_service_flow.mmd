@@ -1,0 +1,36 @@
+flowchart TD
+    A([User types message & clicks Send]) --> B[Frontend: sendMessage]
+    B --> C{session_id exists?}
+    C -- No --> D[Send null session_id]
+    C -- Yes --> E[Send existing session_id]
+    D & E --> F[POST /api/query]
+
+    F --> G{session_id in request?}
+    G -- No --> H[SessionManager: create_session]
+    G -- Yes --> I[Use existing session_id]
+    H & I --> J[SessionManager: get_conversation_history]
+
+    J --> K[AIGenerator: generate_response\nwith tools + history]
+    K --> L[Claude API: first call\nwith search_course_content tool]
+
+    L --> M{stop_reason == tool_use?}
+
+    M -- No --> N[Return direct text response]
+
+    M -- Yes --> O[ToolManager: execute_tool\nsearch_course_content]
+    O --> P[CourseSearchTool: execute\nquery / course_name / lesson_number]
+    P --> Q[VectorStore: semantic search\nChromaDB]
+    Q --> R[Format results + track sources]
+    R --> S[Claude API: second call\nwith tool results]
+    S --> T[Return final text response]
+
+    N & T --> U[ToolManager: get_last_sources]
+    U --> V[ToolManager: reset_sources]
+    V --> W[SessionManager: add_exchange\nupdate history]
+    W --> X[Return answer + sources + session_id]
+
+    X --> Y[Frontend: render answer as Markdown]
+    Y --> Z{sources present?}
+    Z -- Yes --> AA[Render collapsible Sources section]
+    Z -- No --> AB([Display answer only])
+    AA --> AB
