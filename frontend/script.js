@@ -21,16 +21,33 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCourseStats();
 });
 
+// Theme toggle
+function setupThemeToggle() {
+    const toggle = document.getElementById('themeToggle');
+    const icon = toggle.querySelector('i');
+
+    toggle.addEventListener('click', () => {
+        const html = document.documentElement;
+        const isDark = html.getAttribute('data-theme') === 'dark';
+        const newTheme = isDark ? 'light' : 'dark';
+        html.setAttribute('data-theme', newTheme);
+        icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    });
+}
+
 // Event Listeners
 function setupEventListeners() {
+    // Theme toggle
+    setupThemeToggle();
+
     // Chat functionality
     sendButton.addEventListener('click', sendMessage);
     chatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendMessage();
     });
     document.getElementById('newChatButton').addEventListener('click', createNewSession);
-    
-    
+
+
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
         button.addEventListener('click', (e) => {
