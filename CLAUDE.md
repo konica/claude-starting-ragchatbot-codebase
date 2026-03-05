@@ -34,6 +34,12 @@ cd backend && uv run python <script.py>
 rm -rf backend/chroma_db && ./run.sh
 ```
 
+**Code quality checks**
+```bash
+./quality.sh          # check formatting (fails if any file needs reformatting)
+./quality.sh --fix    # auto-format all backend files
+```
+
 ## Architecture
 
 Full-stack RAG chatbot. The FastAPI backend (`backend/`) serves the vanilla JS frontend (`frontend/`) as static files — no separate frontend server.

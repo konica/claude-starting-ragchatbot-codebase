@@ -20,68 +20,69 @@ class AIGenerator:
     def __init__(self, api_key: str, model: str):
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = model
-        
+
         # Pre-build base API parameters
-        self.base_params = {
-            "model": self.model,
-            "temperature": 0,
-            "max_tokens": 800
-        }
-    
+        self.base_params = {"model": self.model, "temperature": 0, "max_tokens": 800}
+
     def _extract_text(self, content) -> str:
         """Extract text from response content blocks, handling empty or non-text blocks."""
         for block in content:
-            if hasattr(block, 'text'):
+            if hasattr(block, "text"):
                 return block.text
         return "I wasn't able to generate a response. Please try again."
 
-    def generate_response(self, query: str,
-                         conversation_history: Optional[str] = None,
-                         tools: Optional[List] = None,
-                         tool_manager=None) -> str:
+    def generate_response(
+        self,
+        query: str,
+        conversation_history: Optional[str] = None,
+        tools: Optional[List] = None,
+        tool_manager=None,
+    ) -> str:
         """
         Generate AI response with optional tool usage and conversation context.
-        
+
         Args:
             query: The user's question or request
             conversation_history: Previous messages for context
             tools: Available tools the AI can use
             tool_manager: Manager to execute tools
-            
+
         Returns:
             Generated response as string
         """
-        
+
         # Build system content efficiently - avoid string ops when possible
         system_content = (
             f"{SYSTEM_PROMPT}\n\nPrevious conversation:\n{conversation_history}"
             if conversation_history
             else SYSTEM_PROMPT
         )
-        
+
         # Prepare API call parameters efficiently
         api_params = {
             **self.base_params,
             "messages": [{"role": "user", "content": query}],
-            "system": system_content
+            "system": system_content,
         }
-        
+
         # Add tools if available
         if tools:
             api_params["tools"] = tools
             api_params["tool_choice"] = {"type": "auto"}
-        
+
         # Get response from Claude
         response = self.client.messages.create(**api_params)
-        
+
         # Handle tool execution if needed
         if response.stop_reason == "tool_use" and tool_manager:
             return self._handle_tool_execution(response, api_params, tool_manager)
-        
+
         # Return direct response
         return self._extract_text(response.content)
-    
-    def _handle_tool_execution(self, initial_response, base_params: Dict[str, Any], tool_manager):
+
+    def _handle_tool_execution(
+        self, initial_response, base_params: Dict[str, Any], tool_manager
+    ):
         """
         Handle execution of tool calls and get follow-up response.
         Supports up to MAX_TOOL_ROUNDS sequential tool-call rounds.
@@ -108,17 +109,21 @@ class AIGenerator:
                 if block.type == "tool_use":
                     try:
                         result = tool_manager.execute_tool(block.name, **block.input)
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": result
-                        })
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": block.id,
+                                "content": result,
+                            }
+                        )
                     except Exception as e:
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": f"Tool execution error: {e}"
-                        })
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": block.id,
+                                "content": f"Tool execution error: {e}",
+                            }
+                        )
                         tool_error = True
 
             messages.append({"role": "user", "content": tool_results})
@@ -128,7 +133,7 @@ class AIGenerator:
             next_params = {
                 **self.base_params,
                 "messages": messages,
-                "system": base_params["system"]
+                "system": base_params["system"],
             }
             if not is_last_round:
                 next_params["tools"] = base_params["tools"]

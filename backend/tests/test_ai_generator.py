@@ -2,8 +2,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from ai_generator import AIGenerator
 
-
 # --- Helpers ---
+
 
 def _text_block(text="Hello"):
     block = MagicMock()
@@ -44,10 +44,17 @@ def tool_manager():
     return tm
 
 
-TOOLS = [{"name": "search_course_content", "description": "Search", "input_schema": {"type": "object"}}]
+TOOLS = [
+    {
+        "name": "search_course_content",
+        "description": "Search",
+        "input_schema": {"type": "object"},
+    }
+]
 
 
 # --- Tests ---
+
 
 class TestNoToolUse:
     def test_direct_response(self, generator, tool_manager):
@@ -56,7 +63,9 @@ class TestNoToolUse:
             stop_reason="end_turn", content=[_text_block("Direct answer")]
         )
 
-        result = gen.generate_response("What is RAG?", tools=TOOLS, tool_manager=tool_manager)
+        result = gen.generate_response(
+            "What is RAG?", tools=TOOLS, tool_manager=tool_manager
+        )
 
         assert result == "Direct answer"
         assert mock_client.messages.create.call_count == 1
@@ -70,14 +79,20 @@ class TestSingleToolRound:
             # First call: Claude wants to use a tool
             _response(stop_reason="tool_use", content=[_tool_use_block()]),
             # Second call (with tools): Claude responds with text
-            _response(stop_reason="end_turn", content=[_text_block("Answer after search")]),
+            _response(
+                stop_reason="end_turn", content=[_text_block("Answer after search")]
+            ),
         ]
 
-        result = gen.generate_response("Search something", tools=TOOLS, tool_manager=tool_manager)
+        result = gen.generate_response(
+            "Search something", tools=TOOLS, tool_manager=tool_manager
+        )
 
         assert result == "Answer after search"
         assert mock_client.messages.create.call_count == 2
-        tool_manager.execute_tool.assert_called_once_with("search_course_content", query="test")
+        tool_manager.execute_tool.assert_called_once_with(
+            "search_course_content", query="test"
+        )
 
 
 class TestTwoToolRounds:
@@ -85,14 +100,28 @@ class TestTwoToolRounds:
         gen, mock_client = generator
         mock_client.messages.create.side_effect = [
             # First call: tool use
-            _response(stop_reason="tool_use", content=[_tool_use_block("get_course_outline", "tu_1", {"course": "MCP"})]),
+            _response(
+                stop_reason="tool_use",
+                content=[
+                    _tool_use_block("get_course_outline", "tu_1", {"course": "MCP"})
+                ],
+            ),
             # Second call (round 1 follow-up, with tools): tool use again
-            _response(stop_reason="tool_use", content=[_tool_use_block("search_course_content", "tu_2", {"query": "lesson 4"})]),
+            _response(
+                stop_reason="tool_use",
+                content=[
+                    _tool_use_block(
+                        "search_course_content", "tu_2", {"query": "lesson 4"}
+                    )
+                ],
+            ),
             # Third call (round 2, no tools): final text
             _response(stop_reason="end_turn", content=[_text_block("Final answer")]),
         ]
 
-        result = gen.generate_response("Complex query", tools=TOOLS, tool_manager=tool_manager)
+        result = gen.generate_response(
+            "Complex query", tools=TOOLS, tool_manager=tool_manager
+        )
 
         assert result == "Final answer"
         assert mock_client.messages.create.call_count == 3
@@ -107,29 +136,52 @@ class TestToolError:
             # First call: tool use
             _response(stop_reason="tool_use", content=[_tool_use_block()]),
             # Second call (no tools due to error): final text
-            _response(stop_reason="end_turn", content=[_text_block("Error recovery answer")]),
+            _response(
+                stop_reason="end_turn", content=[_text_block("Error recovery answer")]
+            ),
         ]
 
-        result = gen.generate_response("Search something", tools=TOOLS, tool_manager=tool_manager)
+        result = gen.generate_response(
+            "Search something", tools=TOOLS, tool_manager=tool_manager
+        )
 
         assert result == "Error recovery answer"
         assert mock_client.messages.create.call_count == 2
         # Verify error string was passed in tool_result
-        second_call_messages = mock_client.messages.create.call_args_list[1][1]["messages"]
+        second_call_messages = mock_client.messages.create.call_args_list[1][1][
+            "messages"
+        ]
         tool_result_msg = second_call_messages[-1]  # last message is tool results
-        assert "Tool execution error: connection failed" in tool_result_msg["content"][0]["content"]
+        assert (
+            "Tool execution error: connection failed"
+            in tool_result_msg["content"][0]["content"]
+        )
 
 
 class TestIntermediateCallsIncludeTools:
     def test_tools_in_intermediate_round(self, generator, tool_manager):
         gen, mock_client = generator
         mock_client.messages.create.side_effect = [
-            _response(stop_reason="tool_use", content=[_tool_use_block("get_course_outline", "tu_1", {"course": "MCP"})]),
-            _response(stop_reason="tool_use", content=[_tool_use_block("search_course_content", "tu_2", {"query": "lesson 4"})]),
+            _response(
+                stop_reason="tool_use",
+                content=[
+                    _tool_use_block("get_course_outline", "tu_1", {"course": "MCP"})
+                ],
+            ),
+            _response(
+                stop_reason="tool_use",
+                content=[
+                    _tool_use_block(
+                        "search_course_content", "tu_2", {"query": "lesson 4"}
+                    )
+                ],
+            ),
             _response(stop_reason="end_turn", content=[_text_block("Done")]),
         ]
 
-        gen.generate_response("Multi-step query", tools=TOOLS, tool_manager=tool_manager)
+        gen.generate_response(
+            "Multi-step query", tools=TOOLS, tool_manager=tool_manager
+        )
 
         # Second API call (intermediate) should include tools
         second_call_kwargs = mock_client.messages.create.call_args_list[1][1]
