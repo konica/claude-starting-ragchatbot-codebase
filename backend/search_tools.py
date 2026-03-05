@@ -1,3 +1,4 @@
+import json
 from typing import Dict, Any, Optional, Protocol
 from abc import ABC, abstractmethod
 from vector_store import VectorStore, SearchResults
@@ -125,6 +126,55 @@ class CourseSearchTool(Tool):
 
         self.last_sources = sources
         return "\n\n".join(formatted)
+
+class CourseOutlineTool(Tool):
+    """Tool for retrieving course outline with full lesson list"""
+
+    def __init__(self, vector_store: VectorStore):
+        self.store = vector_store
+        self.last_sources: list = []
+
+    def get_tool_definition(self) -> Dict[str, Any]:
+        return {
+            "name": "get_course_outline",
+            "description": "Get the complete outline of a course including title, link, and all lessons. Use this for questions about course structure, outlines, or lesson lists.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "course_name": {
+                        "type": "string",
+                        "description": "Course title (partial matches work, e.g. 'MCP', 'Introduction')"
+                    }
+                },
+                "required": ["course_name"]
+            }
+        }
+
+    def execute(self, course_name: str) -> str:
+        resolved_title = self.store._resolve_course_name(course_name)
+        if not resolved_title:
+            return f"No course found matching '{course_name}'."
+
+        results = self.store.course_catalog.get(ids=[resolved_title])
+        if not results or not results['metadatas'] or not results['metadatas'][0]:
+            return f"No metadata found for course '{resolved_title}'."
+
+        metadata = results['metadatas'][0]
+        course_link = metadata.get('course_link', '')
+        lessons = json.loads(metadata.get('lessons_json', '[]'))
+
+        output = f"Course: {resolved_title}\n"
+        output += f"Course Link: {course_link}\n\n"
+        output += "Lessons:\n"
+        for lesson in lessons:
+            num = lesson.get('lesson_number', '?')
+            title = lesson.get('lesson_title', 'Untitled')
+            output += f"  {num}. {title}\n"
+
+        self.last_sources = [{"label": resolved_title, "url": course_link}]
+
+        return output
+
 
 class ToolManager:
     """Manages available tools for the AI"""
