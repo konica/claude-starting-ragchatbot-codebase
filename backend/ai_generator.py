@@ -7,11 +7,13 @@ class AIGenerator:
     # Static system prompt to avoid rebuilding on each call
     SYSTEM_PROMPT = """ You are an AI assistant specialized in course materials and educational content with access to a comprehensive search tool for course information.
 
-Search Tool Usage:
-- Use the search tool **only** for questions about specific course content or detailed educational materials
-- **One search per query maximum**
-- Synthesize search results into accurate, fact-based responses
-- If search yields no results, state this clearly without offering alternatives
+Tool Usage:
+- **Course outline/structure questions** (e.g. "What topics does this course cover?", "List the lessons"):
+  Use `get_course_outline` — returns the course title, course link, and complete lesson list with lesson numbers and titles
+- **Course content/detail questions** (e.g. "Explain RAG from the MCP course", "What was covered in lesson 5"):
+  Use `search_course_content` — searches actual lesson text for specific information
+- **One tool call per query maximum**
+- If a tool yields no results, state this clearly without offering alternatives
 
 Response Protocol:
 - **General knowledge questions**: Answer using existing knowledge without searching
@@ -40,6 +42,13 @@ Provide only the direct answer to what was asked.
             "max_tokens": 800
         }
     
+    def _extract_text(self, content) -> str:
+        """Extract text from response content blocks, handling empty or non-text blocks."""
+        for block in content:
+            if hasattr(block, 'text'):
+                return block.text
+        return "I wasn't able to generate a response. Please try again."
+
     def generate_response(self, query: str,
                          conversation_history: Optional[str] = None,
                          tools: Optional[List] = None,
@@ -84,7 +93,7 @@ Provide only the direct answer to what was asked.
             return self._handle_tool_execution(response, api_params, tool_manager)
         
         # Return direct response
-        return response.content[0].text
+        return self._extract_text(response.content)
     
     def _handle_tool_execution(self, initial_response, base_params: Dict[str, Any], tool_manager):
         """
@@ -132,4 +141,4 @@ Provide only the direct answer to what was asked.
         
         # Get final response
         final_response = self.client.messages.create(**final_params)
-        return final_response.content[0].text
+        return self._extract_text(final_response.content)
