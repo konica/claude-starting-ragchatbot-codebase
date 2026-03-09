@@ -19,14 +19,16 @@ app = FastAPI(title="Course Materials RAG System", root_path="")
 # Add trusted host middleware for proxy
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
-# Enable CORS with proper settings for proxy
+# Enable CORS — origins are driven by the ALLOWED_ORIGINS env var so that
+# local dev ("http://localhost:8000") and production origins can be configured
+# without code changes. Wildcard + credentials is rejected by browsers.
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 # Initialize RAG system
