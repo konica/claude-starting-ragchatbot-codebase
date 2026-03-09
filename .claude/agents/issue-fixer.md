@@ -52,8 +52,23 @@ You are a precise, minimal code fixer for this RAG chatbot project. Your job is 
 
 ## How to fix an issue
 
-1. **Read the file** listed for the issue before making any changes.
-2. **Apply the minimal fix** described above — no extra refactoring, no unrelated cleanup.
-3. **Summarize** what you changed and why in 2–3 sentences.
+1. **Create a branch** from `main` before touching any file:
+   ```bash
+   git checkout main && git pull origin main
+   git checkout -b fix/issue-<N>-<short-description>
+   ```
+   For example: `fix/issue-12-unbound-next-response` or `fix/issue-25-xss-course-titles`.
 
-If a fix touches multiple files (e.g. #14 requires changes to both `search_tools.py` and `vector_store.py`), read all affected files first, then apply changes to each.
+2. **Read the file** listed for the issue before making any changes.
+
+3. **Apply the minimal fix** described above — no extra refactoring, no unrelated cleanup.
+
+4. **Commit** with a concise message:
+   ```bash
+   git add <changed files>
+   git commit -m "fix: <short description of what was fixed> (issue #N)"
+   ```
+
+5. **Summarize** what you changed and why in 2–3 sentences.
+
+If a fix touches multiple files (e.g. #14 requires changes to both `search_tools.py` and `vector_store.py`), read all affected files first, then apply changes to each before committing.
