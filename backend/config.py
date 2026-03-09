@@ -26,5 +26,12 @@ class Config:
     # Database paths
     CHROMA_PATH: str = "./chroma_db"  # ChromaDB storage location
 
+    def __post_init__(self):
+        if not self.ANTHROPIC_API_KEY:
+            raise EnvironmentError(
+                "ANTHROPIC_API_KEY is not set. "
+                "Copy .env.example to .env and add your key."
+            )
+
 
 config = Config()
