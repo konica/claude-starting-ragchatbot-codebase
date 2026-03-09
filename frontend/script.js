@@ -195,7 +195,7 @@ async function loadCourseStats() {
         if (courseTitles) {
             if (data.course_titles && data.course_titles.length > 0) {
                 courseTitles.innerHTML = data.course_titles
-                    .map(title => `<div class="course-title-item">${title}</div>`)
+                    .map(title => `<div class="course-title-item">${escapeHtml(title)}</div>`)
                     .join('');
             } else {
                 courseTitles.innerHTML = '<span class="no-courses">No courses available</span>';
