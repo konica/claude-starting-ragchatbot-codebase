@@ -97,8 +97,9 @@ class AIGenerator:
         """
         messages = base_params["messages"].copy()
         current_response = initial_response
+        next_response = None
 
-        for round in range(1, MAX_TOOL_ROUNDS + 1):
+        for round_num in range(1, MAX_TOOL_ROUNDS + 1):
             # Append assistant's tool-use content
             messages.append({"role": "assistant", "content": current_response.content})
 
@@ -129,7 +130,7 @@ class AIGenerator:
             messages.append({"role": "user", "content": tool_results})
 
             # Include tools in intermediate rounds, exclude on last round
-            is_last_round = (round == MAX_TOOL_ROUNDS) or tool_error
+            is_last_round = (round_num == MAX_TOOL_ROUNDS) or tool_error
             next_params = {
                 **self.base_params,
                 "messages": messages,
@@ -147,4 +148,6 @@ class AIGenerator:
 
             current_response = next_response
 
-        return self._extract_text(next_response.content)
+        if next_response is not None:
+            return self._extract_text(next_response.content)
+        return "I wasn't able to generate a response. Please try again."
